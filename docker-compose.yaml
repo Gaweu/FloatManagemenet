@@ -78,7 +78,7 @@ services:
       - CASSANDRA_SERVER_ADDRESS_TWO=cassandra-node-two
       - CASSANDRA_SERVER_ADDRESS_THREE=cassandra-node-three
       - CASSANDRA_SERVER_PORT=9042
-      - CASSANDRA_KEYSPACE=stadium
+      - CASSANDRA_KEYSPACE=fleet
       - CASSANDRA_USER=cassandra
       - CASSANDRA_PASSWORD=password123
       - CASSANDRA_NUMBER_OF_CLIENTS=500

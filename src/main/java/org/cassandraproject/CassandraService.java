@@ -279,12 +279,10 @@ public class CassandraService {
 
     public void requestSeatReservation(long vehicleId, long userId, LocalDateTime reservationStart, long reservationDuration) throws BackendException {
         try {
-//            Instant instant = reservationStart.atZone(ZoneId.systemDefault()).toInstant();
-//            long epochMillis = instant.toEpochMilli();
 
             session.execute("INSERT INTO reservation_requests (vehicle_id, user_id, reservation_start, reservation_duration, request_time) VALUES (?, ?, ?, ?, toTimestamp(now()));", vehicleId, userId, Timestamp.valueOf(reservationStart), reservationDuration);
 
-            log.info("[*** Reservation requested for user " + userId + " in vehicle " + vehicleId + " ***]");
+            log.info("--- User " + userId + "has sucessfully made a reservation for vehicle " + vehicleId + " ---");
         } catch (Exception e) {
             throw new BackendException("Error requesting reservation: " + e.getMessage(), e);
         }
@@ -304,9 +302,9 @@ public class CassandraService {
 
                 if (isVehicleAvailable(vehicleId, reservationStart, reservationDuration)) {
                     assignVehicleToUser(vehicleId, userId, reservationStart, reservationDuration);
-                    log.info("[*** Vehicle " + vehicleId + " assigned to user " + userId + " for reservation ***]");
+                    log.info("--- User " + userId + " has been assigned a vehicle " + vehicleId + " ---");
                 } else {
-                    log.info("[*** Vehicle " + vehicleId + " is not available for reservation at the specified time ***]");
+                    log.info("--- Can't make a reservation for vehicle " + vehicleId + " at given time ---");
                 }
             }
         } catch (Exception e) {
@@ -322,9 +320,8 @@ public class CassandraService {
                 LocalDateTime existingReservationStart = reservation.getTimestamp("reservation_start_time").toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
                 LocalDateTime existingReservationEnd = existingReservationStart.plusSeconds(reservation.getLong("reservation_duration"));
 
-                // Check if the new reservation time range overlaps with existing reservations
                 if (reservationStart.isBefore(existingReservationEnd) && existingReservationStart.isBefore(reservationStart.plusSeconds(reservationDuration))) {
-                    return false; // Vehicle is not available at the specified time
+                    return false;
                 }
             }
 
@@ -333,7 +330,6 @@ public class CassandraService {
             throw new BackendException("Error checking vehicle availability: " + e.getMessage(), e);
         }
     }
-
 
 
     private void assignVehicleToUser(long vehicleId, long userId, LocalDateTime reservationStart, long reservationDuration) {
@@ -366,6 +362,7 @@ public class CassandraService {
             throw new BackendException("Error displaying vehicle reservations: " + e.getMessage(), e);
         }
     }
+
 
 
     protected void finalize() {

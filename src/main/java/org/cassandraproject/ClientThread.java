@@ -52,7 +52,7 @@ public class ClientThread implements Runnable {
             long userId = random.nextInt(numUsers) + 1;
             long vehicleId = random.nextInt(numVehicles) + 1;
             LocalDateTime currentTime = LocalDateTime.now();
-            LocalDateTime threeDaysLater = currentTime.plusDays(3);
+            LocalDateTime threeDaysLater = currentTime.plusDays(1);
             LocalDateTime reservationStart = generateRandomTimestamp(currentTime, threeDaysLater);
             int reservationDuration = random.nextInt(4) + 1;
 
