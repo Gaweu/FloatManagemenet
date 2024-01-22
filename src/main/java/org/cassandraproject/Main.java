@@ -13,7 +13,7 @@ import java.util.Random;
 @Slf4j
 public class Main {
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws BackendException {
 
         Properties properties = loadProperties();
 
@@ -57,6 +57,8 @@ public class Main {
                 e.printStackTrace();
             }
         }
+
+        cassandraService.displayAllVehicleReservations();
 
         log.info("Program executed successfully");
         System.exit(0);

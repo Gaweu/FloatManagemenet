@@ -214,6 +214,8 @@ public class CassandraService {
         Create create = SchemaBuilder.createTable(this.keySpace, "vehicle_reservations")
                 .ifNotExists()
                 .addPartitionKey("vehicle_id", DataType.bigint())
+                .addColumn("reservation_start_time", DataType.timestamp())
+                .addColumn("reservation_duration", DataType.bigint())
                 .addClusteringColumn("user_id", DataType.bigint());
         session.execute(create);
 
@@ -312,34 +314,56 @@ public class CassandraService {
         }
     }
 
-    private boolean isVehicleAvailable(long vehicleId, LocalDateTime reservationStart, long reservationDuration) {
+    public boolean isVehicleAvailable(long vehicleId, LocalDateTime reservationStart, long reservationDuration) throws BackendException {
         try {
-            ResultSet overlappingReservations = session.execute(
-                    "SELECT * FROM vehicle_reservations WHERE vehicle_id = ? " +
-                            "AND (reservation_start_time >= ? AND reservation_start_time < ?) " +
-                            "AND (reservation_end_time > ? AND reservation_end_time <= ?);",
-                    vehicleId,
-                    Timestamp.valueOf(reservationStart),
-                    Timestamp.valueOf(reservationStart.plusSeconds(reservationDuration)),
-                    Timestamp.valueOf(reservationStart),
-                    Timestamp.valueOf(reservationStart.plusSeconds(reservationDuration))
-            );
+            ResultSet existingReservations = session.execute("SELECT * FROM vehicle_reservations WHERE vehicle_id = ?;", vehicleId);
 
-            return overlappingReservations.isExhausted();
+            for (Row reservation : existingReservations) {
+                LocalDateTime existingReservationStart = reservation.getTimestamp("reservation_start_time").toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
+                LocalDateTime existingReservationEnd = existingReservationStart.plusSeconds(reservation.getLong("reservation_duration"));
+
+                // Check if the new reservation time range overlaps with existing reservations
+                if (reservationStart.isBefore(existingReservationEnd) && existingReservationStart.isBefore(reservationStart.plusSeconds(reservationDuration))) {
+                    return false; // Vehicle is not available at the specified time
+                }
+            }
+
+            return true; // Vehicle is available
         } catch (Exception e) {
-            log.error("Error checking vehicle availability: " + e.getMessage());
-            return false;
+            throw new BackendException("Error checking vehicle availability: " + e.getMessage(), e);
         }
     }
 
+
+
     private void assignVehicleToUser(long vehicleId, long userId, LocalDateTime reservationStart, long reservationDuration) {
         try {
-            session.execute("INSERT INTO vehicle_reservations (vehicle_id, user_id, reservation_start_time, reservation_end_time) " +
+            session.execute("INSERT INTO vehicle_reservations (vehicle_id, user_id, reservation_start_time, reservation_duration) " +
                             "VALUES (?, ?, ?, ?);", vehicleId, userId, Timestamp.valueOf(reservationStart),
-                    Timestamp.valueOf(reservationStart.plusSeconds(reservationDuration)));
+                    reservationDuration);
             session.execute("DELETE FROM reservation_requests WHERE vehicle_id = ? AND user_id = ?;", vehicleId, userId);
         } catch (Exception e) {
             log.error("Error assigning vehicle to user: " + e.getMessage());
+        }
+    }
+    public void displayAllVehicleReservations() throws BackendException {
+        try {
+            ResultSet vehicleReservations = session.execute("SELECT * FROM vehicle_reservations;");
+
+            for (Row reservation : vehicleReservations) {
+                long vehicleId = reservation.getLong("vehicle_id");
+                long userId = reservation.getLong("user_id");
+                Date reservationStartDate = reservation.getTimestamp("reservation_start_time");
+                LocalDateTime reservationStart = reservationStartDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
+                long reservationDuration = reservation.getLong("reservation_duration");
+
+                String formattedReservation = String.format("- Vehicle ID: %-10d | User ID: %-10d | Reservation Start: %-20s | Duration: %-10d seconds",
+                        vehicleId, userId, reservationStart, reservationDuration);
+
+                log.info(formattedReservation);
+            }
+        } catch (Exception e) {
+            throw new BackendException("Error displaying vehicle reservations: " + e.getMessage(), e);
         }
     }
 
