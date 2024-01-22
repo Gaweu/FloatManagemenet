@@ -18,16 +18,14 @@ public class ClientThread implements Runnable {
 
     private Properties properties;
     int numUsers;
-    int numSectors;
-    int numSeatsPerSectors;
-    int numMatches;
+    int numCarDealerships;
+    int numVehicles;
 
     public ClientThread(Properties properties) {
         this.properties = properties;
-        this.numUsers = Integer.parseInt(System.getenv().getOrDefault("ENV_USERS",properties.getProperty("stadium.num_users")));
-        this.numSectors = Integer.parseInt(System.getenv().getOrDefault("ENV_NUM_SECTORS",properties.getProperty("stadium.num_sectors")));
-        this.numSeatsPerSectors = Integer.parseInt(System.getenv().getOrDefault("ENV_NUM_SEATS_SECTOR",properties.getProperty("stadium.num_seats_per_sector")));
-        this.numMatches = Integer.parseInt(System.getenv().getOrDefault("ENV_NUM_MATCHES",properties.getProperty("stadium.num_matches")));
+        int numUsers = Integer.parseInt(System.getenv().getOrDefault("ENV_USERS",properties.getProperty("stadium.num_users")));
+        int numCarDealerships = Integer.parseInt(System.getenv().getOrDefault("ENV_NUM_CAR_DEALERSHIPS",properties.getProperty("stadium.num_car_dealerships")));
+        int numVehicles = Integer.parseInt(System.getenv().getOrDefault("ENV_NUM_VEHICLES",properties.getProperty("stadium.num_vehicles")));
     }
 
     private static LocalDateTime generateRandomTimestamp(LocalDateTime start, LocalDateTime end) {
@@ -56,13 +54,13 @@ public class ClientThread implements Runnable {
 
             Random random = new Random();
             long userId = random.nextInt(numUsers) + 1;
-            long matchId = random.nextInt(numMatches) + 1;
+            long vehicleId = random.nextInt(numVehicles) + 1;
             LocalDateTime currentTime = LocalDateTime.now();
             LocalDateTime threeDaysLater = currentTime.plusDays(3);
             LocalDateTime reservationStart = generateRandomTimestamp(currentTime, threeDaysLater);
             int reservationDuration = random.nextInt(4) + 1;
 
-            cassandraService.requestSeatReservation(matchId, userId, reservationStart, reservationDuration);
+            cassandraService.requestSeatReservation(vehicleId, userId, reservationStart, reservationDuration);
             cassandraService.processReservationRequests();
 
             log.info("Thread " + Thread.currentThread().getName() + " executed completed!");
