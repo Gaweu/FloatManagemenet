@@ -21,25 +21,21 @@ public class ClientThread implements Runnable {
     int numCarDealerships;
     int numVehicles;
 
-    public ClientThread(Properties properties) {
-        this.properties = properties;
-        int numUsers = Integer.parseInt(System.getenv().getOrDefault("ENV_USERS",properties.getProperty("stadium.num_users")));
-        int numCarDealerships = Integer.parseInt(System.getenv().getOrDefault("ENV_NUM_CAR_DEALERSHIPS",properties.getProperty("stadium.num_car_dealerships")));
-        int numVehicles = Integer.parseInt(System.getenv().getOrDefault("ENV_NUM_VEHICLES",properties.getProperty("stadium.num_vehicles")));
-    }
-
     private static LocalDateTime generateRandomTimestamp(LocalDateTime start, LocalDateTime end) {
         // Calculate the difference in seconds between start and end
         long secondsBetween = ChronoUnit.SECONDS.between(start, end);
 
         // Generate a random number of seconds within the range
-        long randomSeconds = new Random().nextLong() % secondsBetween;
-
-        // Adjust the random seconds to be non-negative
-        randomSeconds = (randomSeconds + secondsBetween) % secondsBetween;
+        long randomSeconds = Math.abs(new Random().nextLong() % secondsBetween);
 
         // Add the random seconds to the start time to get the random timestamp
         return start.plusSeconds(randomSeconds);
+    }
+    public ClientThread(Properties properties) {
+        this.properties = properties;
+        this.numUsers = Integer.parseInt(System.getenv().getOrDefault("ENV_USERS",properties.getProperty("stadium.num_users")));
+        this.numCarDealerships = Integer.parseInt(System.getenv().getOrDefault("ENV_NUM_CAR_DEALERSHIPS",properties.getProperty("stadium.num_car_dealerships")));
+        this.numVehicles = Integer.parseInt(System.getenv().getOrDefault("ENV_NUM_VEHICLES",properties.getProperty("stadium.num_vehicles")));
     }
     @Override
     public void run() {

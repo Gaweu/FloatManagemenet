@@ -9,10 +9,8 @@ import org.cassandraproject.exception.BackendException;
 
 import java.math.BigInteger;
 import java.sql.Timestamp;
+import java.time.*;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.ZoneId;
 import java.util.*;
 
 @Slf4j
@@ -279,7 +277,11 @@ public class CassandraService {
 
     public void requestSeatReservation(long vehicleId, long userId, LocalDateTime reservationStart, long reservationDuration) throws BackendException {
         try {
-            session.execute("INSERT INTO reservation_requests (vehicle_id, user_id, reservation_start, reservation_duration, request_time) VALUES (?, ?, ?, ?, dateof(now()));", vehicleId, userId, reservationStart, reservationDuration);
+//            Instant instant = reservationStart.atZone(ZoneId.systemDefault()).toInstant();
+//            long epochMillis = instant.toEpochMilli();
+
+            session.execute("INSERT INTO reservation_requests (vehicle_id, user_id, reservation_start, reservation_duration, request_time) VALUES (?, ?, ?, ?, toTimestamp(now()));", vehicleId, userId, Timestamp.valueOf(reservationStart), reservationDuration);
+
             log.info("[*** Reservation requested for user " + userId + " in vehicle " + vehicleId + " ***]");
         } catch (Exception e) {
             throw new BackendException("Error requesting reservation: " + e.getMessage(), e);
@@ -312,11 +314,16 @@ public class CassandraService {
 
     private boolean isVehicleAvailable(long vehicleId, LocalDateTime reservationStart, long reservationDuration) {
         try {
-            ResultSet overlappingReservations = session.execute("SELECT * FROM vehicle_reservations WHERE vehicle_id = ? " +
-                            "AND ((reservation_start_time >= ? AND reservation_start_time < ?) OR " +
-                            "(reservation_end_time > ? AND reservation_end_time <= ?));",
-                    vehicleId, reservationStart, reservationStart.plusSeconds(reservationDuration),
-                    reservationStart, reservationStart.plusSeconds(reservationDuration));
+            ResultSet overlappingReservations = session.execute(
+                    "SELECT * FROM vehicle_reservations WHERE vehicle_id = ? " +
+                            "AND (reservation_start_time >= ? AND reservation_start_time < ?) " +
+                            "AND (reservation_end_time > ? AND reservation_end_time <= ?);",
+                    vehicleId,
+                    Timestamp.valueOf(reservationStart),
+                    Timestamp.valueOf(reservationStart.plusSeconds(reservationDuration)),
+                    Timestamp.valueOf(reservationStart),
+                    Timestamp.valueOf(reservationStart.plusSeconds(reservationDuration))
+            );
 
             return overlappingReservations.isExhausted();
         } catch (Exception e) {
