@@ -1,0 +1,96 @@
+version: '3.8'
+
+x-common-settings: &cassandra-image
+  image: 'bitnami/cassandra:latest'
+
+networks:
+  cassandra-network:
+    ipam:
+      driver: default
+      config:
+        - subnet: "172.23.0.0/24"
+
+volumes:
+  cassandra_one_data:
+    driver: local
+  cassandra_two_data:
+    driver: local
+  cassandra_three_data:
+    driver: local
+  cassandra_project_logs:
+    driver: local
+
+services:
+  cassandra-node-one:
+    <<: *cassandra-image
+    container_name: cassandra_one
+    ports:
+      - 7000:7000
+      - 9042:9042
+    volumes:
+      - cassandra_one_data:/bitnami
+    environment:
+      - CASSANDRA_SEEDS=cassandra-node-one,cassandra-node-two,cassandra-node-three
+      - CASSANDRA_PASSWORD_SEEDER=yes
+      - CASSANDRA_PASSWORD=password123
+    networks:
+      cassandra-network:
+        ipv4_address: 172.23.0.2
+
+
+  cassandra-node-two:
+    <<: *cassandra-image
+    container_name: cassandra_two
+    ports:
+      - 7001:7000
+      - 9043:9042
+    volumes:
+      - cassandra_two_data:/bitnami
+    environment:
+      - CASSANDRA_SEEDS=cassandra-node-one,cassandra-node-two,cassandra-node-three
+      - CASSANDRA_PASSWORD=password123
+    networks:
+      cassandra-network:
+        ipv4_address: 172.23.0.3
+
+
+  cassandra-node-three:
+    <<: *cassandra-image
+    container_name: cassandra_three
+    ports:
+      - 7002:7000
+      - 9044:9042
+    volumes:
+      - cassandra_three_data:/bitnami
+    environment:
+      - CASSANDRA_SEEDS=cassandra-node-one,cassandra-node-two,cassandra-node-three
+      - CASSANDRA_PASSWORD=password123
+    networks:
+      cassandra-network:
+        ipv4_address: 172.23.0.4
+
+
+  cassandra-project:
+    build: .
+    container_name: cassandra-project
+    environment:
+      - CASSANDRA_SERVER_ADDRESS_ONE=cassandra-node-one
+      - CASSANDRA_SERVER_ADDRESS_TWO=cassandra-node-two
+      - CASSANDRA_SERVER_ADDRESS_THREE=cassandra-node-three
+      - CASSANDRA_SERVER_PORT=9042
+      - CASSANDRA_KEYSPACE=stadium
+      - CASSANDRA_USER=cassandra
+      - CASSANDRA_PASSWORD=password123
+      - CASSANDRA_NUMBER_OF_CLIENTS=500
+      - ENV_USERS=100
+      - ENV_NUM_CAR_DEALERSHIPS=4
+      - ENV_NUM_VEHICLES=10
+    depends_on:
+      - cassandra-node-one
+      - cassandra-node-two
+      - cassandra-node-three
+    networks:
+      cassandra-network:
+        ipv4_address: 172.23.0.26
+    volumes:
+      - cassandra_project_logs:/cassandraproject/executables/logs
